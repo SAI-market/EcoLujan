@@ -310,6 +310,7 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
 .modal .festejo{text-align:center;color:#fff;margin-bottom:14px}
 .modal .festejo .em{font-size:42px;display:block}
 .modal .festejo b{font-family:var(--display);font-size:20px;font-weight:800}
+.modal .festejo p{font-size:13px;color:rgba(255,255,255,.85);margin-top:8px;line-height:1.5}
 .modal .cupon{margin:0}
 .modal .cerrar{width:100%;margin-top:16px;padding:15px;border-radius:13px;background:var(--ambar);color:var(--verde-osc);
   font-family:var(--display);font-weight:800;font-size:15px}
@@ -479,6 +480,18 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
     </div>
   </div>
 
+  <!-- festejo al llegar a la meta general del juego (100 pts) -->
+  <div class="overlay" id="overlayMeta">
+    <div class="modal modal-meta">
+      <div class="festejo">
+        <span class="em">🏆</span>
+        <b>¡Meta cumplida!</b>
+        <p class="meta-desc">Llegaron a 100 EcoPuntos. Mostrale esta pantalla a tu profe y andá a la pestaña <b>Galería</b> para corroborar las fotos.</p>
+      </div>
+      <button class="cerrar" id="btnCerrarMeta">¡Genial!</button>
+    </div>
+  </div>
+
   <!-- lightbox de foto (verificación manual) -->
   <div class="overlay" id="overlayLightbox">
     <div class="modal modal-lightbox">
@@ -524,6 +537,7 @@ const estado = {
   porTipo:{ vidrio:0, plastico:0, papel:0, no_reciclable:0 },
   canjes:[],       // {comercio, descuento, codigo, costo, hora}
   fotosGaleria:[], // {id, dataUrl, tipo, puntos, hora} — respaldo temporal para verificación manual
+  metaCumplida:false, // ya festejamos la meta general del juego (barra de 100 pts)
 };
 
 /* ====== Utilidades ====== */
@@ -544,34 +558,40 @@ function pintarPuntos(){
   actualizarProgreso();
 }
 
-/* Barra de progreso "humo que se disipa": el tramo entre el umbral ya
-   superado y el próximo premio se pinta de verde; el humo gris ocupa
-   lo que falta y se va achicando (disipando) a medida que sumás puntos. */
+/* Barra de progreso "humo que se disipa": es una MISMA meta general para
+   toda la actividad (no depende de premios ni del tipo de residuo — todo
+   punto que sumás, sea vidrio, plástico o papel, cuenta igual acá).
+   Es la barra pensada para la actividad/presentación en clase: al llegar
+   a 100 se dispara un festejo que indica "andá a corroborar la galería
+   de fotos contra lo que el equipo dijo que registró". No forma parte
+   de la lógica final del proyecto (esa usa premios/canjes), solo del juego. */
+const META_PUNTOS_JUEGO = 100;
 function actualizarProgreso(){
-  const umbrales = [...new Set(COMERCIOS.map(c=>c.costo))].sort((a,b)=>a-b);
-  const max = umbrales[umbrales.length-1];
-  let prev = 0, next = max;
-  for (const u of umbrales){
-    if (u <= estado.ecoPuntos) prev = u;
-    else { next = u; break; }
-  }
   const wrap = $("#progresoWrap");
-  let pct, meta;
-  if (estado.ecoPuntos >= max){
-    pct = 100;
-    meta = "¡Aire limpio! Ya podés canjear cualquier premio 🌿";
+  const pct = Math.max(0, Math.min(100, Math.round((estado.ecoPuntos / META_PUNTOS_JUEGO) * 100)));
+  let meta;
+  if (estado.fotos === 0){
+    meta = "Sacá tu primera foto para empezar";
+  } else if (pct >= 100){
+    meta = "¡Meta cumplida! Mostrale la galería a tu profe 🏆";
   } else {
-    pct = Math.round(((estado.ecoPuntos - prev) / (next - prev)) * 100);
-    const proximo = COMERCIOS.find(c=>c.costo===next);
-    meta = estado.fotos===0
-      ? "Sacá tu primera foto para empezar"
-      : `Te faltan ${next - estado.ecoPuntos} pts para ${proximo.nombre}`;
+    meta = `Te faltan ${META_PUNTOS_JUEGO - estado.ecoPuntos} pts para la meta`;
   }
   $("#progresoFill").style.width = pct + "%";
   $("#progresoHumo").style.width = (100 - pct) + "%";
   $("#progresoPct").textContent = pct + "%";
   $("#progresoMeta").textContent = meta;
   wrap.classList.toggle("limpio", pct >= 100);
+
+  // Dispara el festejo una sola vez por "cruce" de la meta (si después
+  // se borra una foto y el puntaje baja de 100, se rearma para poder
+  // festejar de nuevo cuando la vuelvan a alcanzar).
+  if (estado.ecoPuntos >= META_PUNTOS_JUEGO && !estado.metaCumplida){
+    estado.metaCumplida = true;
+    festejarMeta();
+  } else if (estado.ecoPuntos < META_PUNTOS_JUEGO){
+    estado.metaCumplida = false;
+  }
 }
 function pintarDesglose(){
   const cont = $("#desglose");
@@ -832,9 +852,16 @@ function mostrarModalCupon(canje){
 $("#btnCerrarModal").addEventListener("click", ()=> $("#overlay").classList.remove("abierto"));
 $("#overlay").addEventListener("click", (e)=>{ if (e.target.id==="overlay") $("#overlay").classList.remove("abierto"); });
 
-function lanzarConfeti(){
+/* ====== Festejo de meta del juego (actividad de clase) ====== */
+function festejarMeta(){
+  $("#overlayMeta").classList.add("abierto");
+  lanzarConfeti($("#overlayMeta"));
+}
+$("#btnCerrarMeta").addEventListener("click", ()=> $("#overlayMeta").classList.remove("abierto"));
+$("#overlayMeta").addEventListener("click", (e)=>{ if (e.target.id==="overlayMeta") $("#overlayMeta").classList.remove("abierto"); });
+
+function lanzarConfeti(ov = $("#overlay")){
   const colores = ["#F2A93B","#3FA15C","#2C7A7B","#fff"];
-  const ov = $("#overlay");
   for (let i=0;i<26;i++){
     const c = document.createElement("span");
     c.className = "confeti";
