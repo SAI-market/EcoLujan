@@ -166,6 +166,22 @@ main{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;position:rel
 .contador-fotos{margin-top:14px;text-align:center;font-size:13px;color:var(--carbon-suave)}
 .contador-fotos b{font-family:var(--mono);color:var(--verde);font-weight:800}
 
+/* ====== Selector de tipo de residuo ====== */
+.selector-tipo{margin-top:16px}
+.selector-tipo .etiqueta{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--carbon-suave);margin-bottom:8px}
+.tipos-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tipo-btn{display:flex;align-items:center;gap:9px;padding:13px 12px;border-radius:14px;background:var(--papel-2);
+  border:2px solid var(--linea);font-weight:700;font-size:13px;color:var(--carbon);
+  transition:transform .12s ease, border-color .15s ease, background .15s ease}
+.tipo-btn .em{font-size:19px;line-height:1}
+.tipo-btn:active{transform:scale(.97)}
+.tipo-btn.activo{border-color:var(--verde);background:rgba(28,110,71,.08);color:var(--verde-osc)}
+.tipo-btn.activo.no-reciclable{border-color:var(--carbon-suave);background:rgba(90,101,94,.12);color:var(--carbon)}
+.desglose{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
+.desglose span{font-size:11px;font-weight:600;color:var(--carbon-suave);background:var(--papel-2);
+  border:1px solid var(--linea);padding:4px 9px;border-radius:999px}
+.desglose span b{color:var(--verde);font-family:var(--mono)}
+
 /* "+10" flotante */
 .flota{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;pointer-events:none;
   font-family:var(--display);font-weight:800;font-size:46px;color:var(--ambar);
@@ -302,7 +318,7 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
     <!-- CÁMARA -->
     <section class="vista activa" id="vista-camara">
       <h2 class="titulo-vista">Registrá un residuo</h2>
-      <p class="bajada">Apuntá a la basura y tocá disparar. Cada foto suma <b>10 EcoPuntos</b>.</p>
+      <p class="bajada">Elegí el tipo de residuo, apuntá y tocá disparar. Vidrio, plástico y papel/cartón suman <b>10 EcoPuntos</b> cada uno.</p>
 
       <div class="camara-marco">
         <video id="video" autoplay playsinline muted></video>
@@ -312,6 +328,16 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
         <div class="camara-off" id="camaraOff">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           <p id="camaraOffTxt">Iniciando cámara…</p>
+        </div>
+      </div>
+
+      <div class="selector-tipo">
+        <div class="etiqueta">¿Qué tipo de residuo es?</div>
+        <div class="tipos-grid" id="tiposGrid">
+          <button class="tipo-btn" data-tipo="vidrio"><span class="em">🍾</span> Vidrio</button>
+          <button class="tipo-btn" data-tipo="plastico"><span class="em">🧴</span> Plástico</button>
+          <button class="tipo-btn" data-tipo="papel"><span class="em">📦</span> Papel y cartón</button>
+          <button class="tipo-btn no-reciclable" data-tipo="no_reciclable"><span class="em">🗑️</span> No reciclable</button>
         </div>
       </div>
 
@@ -326,6 +352,7 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
       </div>
       <input type="file" id="inputFallback" accept="image/*" capture="environment" hidden>
       <p class="contador-fotos">Registraste <b id="contFotos">0</b> residuos en esta sesión</p>
+      <div class="desglose" id="desglose"></div>
     </section>
 
     <!-- PREMIOS -->
@@ -379,6 +406,14 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
 
 /* ====== Configuración editable ====== */
 const PUNTOS_POR_FOTO = 10;
+// Tipos de residuo: separación manual (sin IA). "no_reciclable" no suma puntos,
+// solo queda registrado para que el equipo vea cuánto sigue quemando/tirando mal.
+const TIPOS_RESIDUO = {
+  vidrio:        { nombre:"Vidrio",         em:"🍾", puntos:PUNTOS_POR_FOTO },
+  plastico:      { nombre:"Plástico",       em:"🧴", puntos:PUNTOS_POR_FOTO },
+  papel:         { nombre:"Papel y cartón", em:"📦", puntos:PUNTOS_POR_FOTO },
+  no_reciclable: { nombre:"No reciclable",  em:"🗑️", puntos:0 },
+};
 const COMERCIOS = [
   { id:"cafe",   nombre:"Café del Río",         descuento:"15% en cafetería",        costo:20,  ico:"☕" },
   { id:"hela",   nombre:"Heladería La Basílica", descuento:"2x1 en cucuruchos",       costo:30,  ico:"🍦" },
@@ -394,6 +429,8 @@ const estado = {
   ecoPuntos:0,
   fotos:0,
   ultimaFoto:null,
+  tipoSeleccionado:null,
+  porTipo:{ vidrio:0, plastico:0, papel:0, no_reciclable:0 },
   canjes:[],   // {comercio, descuento, codigo, costo, hora}
 };
 
@@ -411,6 +448,14 @@ const horaCorta = () => new Date().toLocaleTimeString("es-AR",{hour:"2-digit",mi
 function pintarPuntos(){
   $("#hdrPuntos").textContent = estado.ecoPuntos;
   $("#contFotos").textContent = estado.fotos;
+  pintarDesglose();
+}
+function pintarDesglose(){
+  const cont = $("#desglose");
+  if (!cont) return;
+  cont.innerHTML = Object.entries(TIPOS_RESIDUO).map(([id,t])=>
+    `<span>${t.em} ${t.nombre}: <b>${estado.porTipo[id]}</b></span>`
+  ).join("");
 }
 function animarSuma(){
   const bil = $("#billetera");
@@ -436,7 +481,7 @@ async function iniciarCamara(){
     await video.play().catch(()=>{});
     $("#camaraOff").style.display = "none";
     $("#camHint").style.display = "block";
-    $("#btnDisparar").disabled = false;
+    actualizarEstadoDisparador();
   }catch(err){
     activarFallback(err);
   }
@@ -460,39 +505,60 @@ function activarFallback(err){
   $("#btnAbrirNativa").addEventListener("click", ()=> $("#inputFallback").click());
 }
 
+/* ====== Selector de tipo de residuo (separación manual, sin IA) ====== */
+function actualizarEstadoDisparador(){
+  $("#btnDisparar").disabled = !(stream && estado.tipoSeleccionado);
+}
+document.querySelectorAll(".tipo-btn").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    const yaActivo = b.classList.contains("activo");
+    document.querySelectorAll(".tipo-btn").forEach(x=>x.classList.remove("activo"));
+    estado.tipoSeleccionado = yaActivo ? null : b.dataset.tipo;
+    if (!yaActivo) b.classList.add("activo");
+    actualizarEstadoDisparador();
+  });
+});
+
 /* Captura desde el video en vivo */
 function capturar(){
-  if (!stream) return;
+  if (!stream || !estado.tipoSeleccionado) return;
   const c = document.createElement("canvas");
   const w = video.videoWidth || 720, h = video.videoHeight || 960;
   c.width = w; c.height = h;
   c.getContext("2d").drawImage(video,0,0,w,h);
   const dataUrl = c.toDataURL("image/jpeg",0.8);
-  flashYsumar(dataUrl);
+  flashYsumar(dataUrl, estado.tipoSeleccionado);
 }
 
 /* Captura desde input file (fallback) */
 $("#inputFallback").addEventListener("change", (e)=>{
   const file = e.target.files && e.target.files[0];
-  if (!file) return;
+  if (!file || !estado.tipoSeleccionado) return;
   const r = new FileReader();
-  r.onload = () => flashYsumar(r.result);
+  r.onload = () => flashYsumar(r.result, estado.tipoSeleccionado);
   r.readAsDataURL(file);
   e.target.value = "";
 });
 
-function flashYsumar(dataUrl){
+function flashYsumar(dataUrl, tipo){
   const fl = $("#flash");
   fl.classList.remove("go"); void fl.offsetWidth; fl.classList.add("go");
+  const info = TIPOS_RESIDUO[tipo] || TIPOS_RESIDUO.no_reciclable;
   estado.fotos += 1;
-  estado.ecoPuntos += PUNTOS_POR_FOTO;
+  estado.porTipo[tipo] = (estado.porTipo[tipo] || 0) + 1;
+  estado.ecoPuntos += info.puntos;
   estado.ultimaFoto = dataUrl;
   $("#thumbVacia").style.display = "none";
   const t = $("#thumbUlt");
   t.src = dataUrl; t.style.display = "block";
   pintarPuntos();
-  animarSuma();
+  if (info.puntos > 0) animarSuma();
   pintarPremios(); // refresca botones de canje habilitados
+
+  // Pide elegir el tipo de nuevo para el próximo residuo
+  estado.tipoSeleccionado = null;
+  document.querySelectorAll(".tipo-btn").forEach(x=>x.classList.remove("activo"));
+  actualizarEstadoDisparador();
 }
 
 $("#btnDisparar").addEventListener("click", capturar);
