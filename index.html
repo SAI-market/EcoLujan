@@ -209,8 +209,10 @@ main{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;position:rel
 .tipo-btn small{font-family:var(--mono);font-weight:800;font-size:10.5px;color:var(--verde);letter-spacing:.02em}
 .tipo-btn:active{transform:scale(.97)}
 .tipo-btn.activo{border-color:var(--verde);background:rgba(28,110,71,.08);color:var(--verde-osc)}
-.tipo-btn.activo.no-reciclable{border-color:var(--carbon-suave);background:rgba(90,101,94,.12);color:var(--carbon)}
-.tipo-btn.no-reciclable small{color:var(--carbon-suave)}
+.pista-tipo{display:none;margin-top:10px;padding:10px 12px;border-radius:12px;
+  background:rgba(28,110,71,.08);border:1px solid var(--linea);font-size:12.5px;color:var(--carbon-suave);line-height:1.45}
+.pista-tipo.visible{display:block;animation:subir .25s ease both}
+.pista-tipo b{color:var(--verde-osc)}
 .desglose{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
 .desglose span{font-size:11px;font-weight:600;color:var(--carbon-suave);background:var(--papel-2);
   border:1px solid var(--linea);padding:4px 9px;border-radius:999px}
@@ -274,7 +276,6 @@ main{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;position:rel
 .galeria-item .tag{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;
   padding:4px 6px;font-size:10.5px;font-weight:700;color:#fff;
   background:linear-gradient(0deg,rgba(0,0,0,.68),transparent)}
-.galeria-item.no-reciclable .tag{background:linear-gradient(0deg,rgba(60,60,60,.78),transparent)}
 
 /* ====== Lightbox de foto ====== */
 .modal-lightbox{max-width:360px}
@@ -392,11 +393,12 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
       <div class="selector-tipo">
         <div class="etiqueta">¿Qué tipo de residuo es?</div>
         <div class="tipos-grid" id="tiposGrid">
-          <button class="tipo-btn" data-tipo="vidrio"><span class="em">🍾</span> <span>Vidrio<small>+15 pts</small></span></button>
-          <button class="tipo-btn" data-tipo="plastico"><span class="em">🧴</span> <span>Plástico<small>+10 pts</small></span></button>
-          <button class="tipo-btn" data-tipo="papel"><span class="em">📦</span> <span>Papel y cartón<small>+8 pts</small></span></button>
-          <button class="tipo-btn no-reciclable" data-tipo="no_reciclable"><span class="em">🗑️</span> <span>No reciclable<small>+1 pts</small></span></button>
+          <button class="tipo-btn" data-tipo="papel" title="Hojas, diarios, cajas, envases"><span class="em">📦</span> <span>Papel y cartón<small>+8 pts</small></span></button>
+          <button class="tipo-btn" data-tipo="plastico" title="Envases de bebidas, frascos de limpieza, sachets"><span class="em">🧴</span> <span>Plásticos<small>+10 pts</small></span></button>
+          <button class="tipo-btn" data-tipo="vidrio" title="Botellas, frascos (sin romper)"><span class="em">🍾</span> <span>Vidrio<small>+15 pts</small></span></button>
+          <button class="tipo-btn" data-tipo="metal" title="Latas de aluminio o conservas"><span class="em">🥫</span> <span>Metales<small>+12 pts</small></span></button>
         </div>
+        <div class="pista-tipo" id="pistaTipo"></div>
       </div>
 
       <div class="camara-marco">
@@ -510,14 +512,15 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
 "use strict";
 
 /* ====== Configuración editable ====== */
-// Tipos de residuo: separación manual (sin IA), cada uno con su propio puntaje.
-// "no_reciclable" no suma puntos, solo queda registrado para ver cuánto sigue quemando/tirando mal.
+// Tipos de residuo: separación manual (sin IA), cada uno con su propio puntaje
+// y ejemplos para guiar a los chicos sobre qué va en cada categoría.
 const TIPOS_RESIDUO = {
-  vidrio:        { nombre:"Vidrio",         em:"🍾", puntos:15 },
-  plastico:      { nombre:"Plástico",       em:"🧴", puntos:10 },
-  papel:         { nombre:"Papel y cartón", em:"📦", puntos:8  },
-  no_reciclable: { nombre:"No reciclable",  em:"🗑️", puntos:0  },
+  papel:    { nombre:"Papel y cartón", em:"📦", puntos:8,  ejemplos:"Hojas, diarios, cajas, envases" },
+  plastico: { nombre:"Plásticos",      em:"🧴", puntos:10, ejemplos:"Envases de bebidas, frascos de limpieza, sachets" },
+  vidrio:   { nombre:"Vidrio",         em:"🍾", puntos:15, ejemplos:"Botellas, frascos (sin romper)" },
+  metal:    { nombre:"Metales",        em:"🥫", puntos:12, ejemplos:"Latas de aluminio o conservas" },
 };
+const TIPO_DESCONOCIDO = { nombre:"Residuo", em:"🗑️", puntos:0, ejemplos:"" };
 const COMERCIOS = [
   { id:"cafe",   nombre:"Café del Río",         descuento:"15% en cafetería",        costo:20,  ico:"☕" },
   { id:"hela",   nombre:"Heladería La Basílica", descuento:"2x1 en cucuruchos",       costo:30,  ico:"🍦" },
@@ -534,7 +537,7 @@ const estado = {
   fotos:0,
   ultimaFoto:null,
   tipoSeleccionado:null,
-  porTipo:{ vidrio:0, plastico:0, papel:0, no_reciclable:0 },
+  porTipo:{ papel:0, plastico:0, vidrio:0, metal:0 },
   canjes:[],       // {comercio, descuento, codigo, costo, hora}
   fotosGaleria:[], // {id, dataUrl, tipo, puntos, hora} — respaldo temporal para verificación manual
   metaCumplida:false, // ya festejamos la meta general del juego (barra de 100 pts)
@@ -653,6 +656,13 @@ function activarFallback(err){
 function actualizarEstadoDisparador(){
   $("#btnDisparar").disabled = !(stream && estado.tipoSeleccionado);
 }
+function mostrarPistaTipo(){
+  const pista = $("#pistaTipo");
+  const info = TIPOS_RESIDUO[estado.tipoSeleccionado];
+  if (!info || !info.ejemplos){ pista.classList.remove("visible"); pista.innerHTML = ""; return; }
+  pista.innerHTML = `<b>Ejemplos:</b> ${info.ejemplos}`;
+  pista.classList.add("visible");
+}
 document.querySelectorAll(".tipo-btn").forEach(b=>{
   b.addEventListener("click", ()=>{
     const yaActivo = b.classList.contains("activo");
@@ -660,6 +670,7 @@ document.querySelectorAll(".tipo-btn").forEach(b=>{
     estado.tipoSeleccionado = yaActivo ? null : b.dataset.tipo;
     if (!yaActivo) b.classList.add("activo");
     actualizarEstadoDisparador();
+    mostrarPistaTipo();
   });
 });
 
@@ -687,7 +698,7 @@ $("#inputFallback").addEventListener("change", (e)=>{
 function flashYsumar(dataUrl, tipo){
   const fl = $("#flash");
   fl.classList.remove("go"); void fl.offsetWidth; fl.classList.add("go");
-  const info = TIPOS_RESIDUO[tipo] || TIPOS_RESIDUO.no_reciclable;
+  const info = TIPOS_RESIDUO[tipo] || TIPO_DESCONOCIDO;
   estado.fotos += 1;
   estado.porTipo[tipo] = (estado.porTipo[tipo] || 0) + 1;
   estado.ecoPuntos += info.puntos;
@@ -708,6 +719,7 @@ function flashYsumar(dataUrl, tipo){
   estado.tipoSeleccionado = null;
   document.querySelectorAll(".tipo-btn").forEach(x=>x.classList.remove("activo"));
   actualizarEstadoDisparador();
+  mostrarPistaTipo();
 }
 
 $("#btnDisparar").addEventListener("click", capturar);
@@ -787,8 +799,8 @@ function pintarGaleria(){
   }
   // últimas fotos primero, para revisar rápido lo recién registrado
   cont.innerHTML = [...estado.fotosGaleria].reverse().map(f=>{
-    const info = TIPOS_RESIDUO[f.tipo] || TIPOS_RESIDUO.no_reciclable;
-    return `<button type="button" class="galeria-item ${f.tipo==='no_reciclable'?'no-reciclable':''}" data-id="${f.id}">
+    const info = TIPOS_RESIDUO[f.tipo] || TIPO_DESCONOCIDO;
+    return `<button type="button" class="galeria-item" data-id="${f.id}">
       <img src="${f.dataUrl}" alt="${info.nombre}">
       <span class="tag"><span>${info.em}</span><span>+${f.puntos}</span></span>
     </button>`;
@@ -803,7 +815,7 @@ function pintarGaleria(){
 function abrirLightbox(id){
   const f = estado.fotosGaleria.find(x=>x.id===id);
   if (!f) return;
-  const info = TIPOS_RESIDUO[f.tipo] || TIPOS_RESIDUO.no_reciclable;
+  const info = TIPOS_RESIDUO[f.tipo] || TIPO_DESCONOCIDO;
   $("#lightboxImg").src = f.dataUrl;
   $("#lightboxInfo").innerHTML = `${info.em} <b>${info.nombre}</b> · +${f.puntos} pts · ${f.hora}`;
   $("#overlayLightbox").dataset.id = id;
