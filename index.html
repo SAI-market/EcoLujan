@@ -95,6 +95,37 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .btn-primario:disabled{filter:grayscale(.5) brightness(.95);box-shadow:none;cursor:not-allowed}
 .nota-pie{margin-top:16px;font-size:11.5px;color:rgba(255,255,255,.6);text-align:center;line-height:1.5}
 
+/* ====== Barra de progreso "humo que se disipa" ====== */
+.progreso-wrap{flex:0 0 auto;padding:14px 18px;background:var(--papel-2);border-bottom:1px solid var(--linea);z-index:9}
+.progreso-info{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.progreso-info span:first-child{font-size:12.5px;font-weight:700;color:var(--carbon-suave)}
+.progreso-pct{font-family:var(--mono);font-weight:800;font-size:13px;color:var(--verde)}
+.progreso-barra{position:relative;height:24px;border-radius:999px;background:#e2ddd0;overflow:hidden;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.1)}
+.progreso-fill{position:absolute;inset:0;width:0%;border-radius:999px;z-index:1;
+  background:linear-gradient(90deg,var(--verde-claro),var(--verde));
+  box-shadow:0 0 12px rgba(63,161,92,.45) inset;transition:width .7s cubic-bezier(.3,.9,.3,1)}
+.progreso-fill::after{content:"";position:absolute;inset:0;border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.35),transparent 55%)}
+.progreso-humo{position:absolute;top:0;right:0;bottom:0;width:100%;z-index:2;overflow:hidden;pointer-events:none;
+  background:linear-gradient(90deg,rgba(90,101,94,.08),rgba(58,66,60,.42));
+  transition:width .7s cubic-bezier(.3,.9,.3,1)}
+.puff{position:absolute;border-radius:50%;filter:blur(3px);
+  background:radial-gradient(circle,rgba(130,138,130,.85),rgba(90,101,94,.12) 70%);
+  animation:flotarHumo 3.6s ease-in-out infinite}
+.puff.p1{width:26px;height:26px;left:8%;top:15%;animation-delay:0s}
+.puff.p2{width:20px;height:20px;left:38%;top:45%;animation-delay:.9s}
+.puff.p3{width:30px;height:30px;left:64%;top:5%;animation-delay:1.8s}
+.puff.p4{width:18px;height:18px;left:85%;top:35%;animation-delay:2.5s}
+@keyframes flotarHumo{
+  0%{transform:translate(0,0) scale(1);opacity:.5}
+  50%{transform:translate(-5px,-7px) scale(1.18);opacity:.75}
+  100%{transform:translate(3px,-14px) scale(.88);opacity:.3}
+}
+.progreso-meta{margin-top:7px;font-size:11.5px;color:var(--carbon-suave);text-align:center}
+.progreso-wrap.limpio .progreso-barra{box-shadow:inset 0 2px 5px rgba(0,0,0,.1),0 0 16px rgba(63,161,92,.5)}
+.progreso-wrap.limpio .progreso-meta{color:var(--verde);font-weight:700}
+
 /* ====== Header / billetera ====== */
 header{
   flex:0 0 auto;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;
@@ -236,6 +267,25 @@ main{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;position:rel
 .tag-usado{display:inline-block;margin-top:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
   color:var(--carbon-suave);border:1px solid var(--linea);padding:2px 7px;border-radius:6px}
 
+/* ====== Galería de verificación ====== */
+.galeria-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.galeria-item{position:relative;aspect-ratio:1;border-radius:13px;overflow:hidden;border:2px solid var(--linea);background:var(--linea)}
+.galeria-item img{width:100%;height:100%;object-fit:cover;display:block}
+.galeria-item .tag{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;
+  padding:4px 6px;font-size:10.5px;font-weight:700;color:#fff;
+  background:linear-gradient(0deg,rgba(0,0,0,.68),transparent)}
+.galeria-item.no-reciclable .tag{background:linear-gradient(0deg,rgba(60,60,60,.78),transparent)}
+
+/* ====== Lightbox de foto ====== */
+.modal-lightbox{max-width:360px}
+.lightbox-img{width:100%;border-radius:16px;display:block;box-shadow:var(--sombra);background:#0d1512}
+.lightbox-info{color:#fff;text-align:center;margin-top:12px;font-size:14px;font-weight:600}
+.lightbox-acciones{display:flex;gap:10px;margin-top:16px}
+.btn-eliminar{flex:1;padding:14px;border-radius:12px;background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.35);color:#fff;font-weight:700;font-size:13.5px;transition:background .15s}
+.btn-eliminar:active{background:rgba(255,255,255,.22)}
+.lightbox-acciones .cerrar{flex:1;margin-top:0}
+
 /* ====== Bottom nav ====== */
 nav{
   flex:0 0 auto;display:flex;background:var(--papel-2);border-top:1px solid var(--linea);
@@ -316,6 +366,21 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
     </div>
   </header>
 
+  <!-- ===== BARRA DE PROGRESO (humo que se disipa) ===== -->
+  <div class="progreso-wrap" id="progresoWrap">
+    <div class="progreso-info">
+      <span>🌬️ Progreso hacia aire limpio</span>
+      <span class="progreso-pct" id="progresoPct">0%</span>
+    </div>
+    <div class="progreso-barra">
+      <div class="progreso-fill" id="progresoFill"></div>
+      <div class="progreso-humo" id="progresoHumo">
+        <span class="puff p1"></span><span class="puff p2"></span><span class="puff p3"></span><span class="puff p4"></span>
+      </div>
+    </div>
+    <div class="progreso-meta" id="progresoMeta">Sacá tu primera foto para empezar</div>
+  </div>
+
   <!-- ===== CONTENIDO ===== -->
   <main>
     <!-- CÁMARA -->
@@ -371,6 +436,13 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
       <p class="bajada">Tus cupones generados. Presentalos en el comercio para usar el descuento.</p>
       <div id="listaCanjes"></div>
     </section>
+
+    <!-- GALERÍA (verificación manual, sin IA) -->
+    <section class="vista" id="vista-galeria">
+      <h2 class="titulo-vista">Galería de residuos</h2>
+      <p class="bajada">Revisá las fotos de esta sesión. Si alguna está repetida, borrosa o no corresponde, eliminala para corregir tus puntos.</p>
+      <div class="galeria-grid" id="galeriaGrid"></div>
+    </section>
   </main>
 
   <!-- ===== NAV ===== -->
@@ -388,6 +460,11 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
       Mis canjes
       <span class="badge" id="badgeCanjes" style="display:none">0</span>
     </button>
+    <button data-tab="galeria" id="navGaleria">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m21 15-5-5L5 21"/></svg>
+      Galería
+      <span class="badge" id="badgeGaleria" style="display:none">0</span>
+    </button>
   </nav>
 
   <!-- flotante +10 -->
@@ -399,6 +476,18 @@ nav .badge{position:absolute;top:2px;right:50%;margin-right:-22px;min-width:17px
       <div class="festejo"><span class="em">🎉</span><b>¡Cupón generado!</b></div>
       <div id="cuponModal"></div>
       <button class="cerrar" id="btnCerrarModal">Listo</button>
+    </div>
+  </div>
+
+  <!-- lightbox de foto (verificación manual) -->
+  <div class="overlay" id="overlayLightbox">
+    <div class="modal modal-lightbox">
+      <img id="lightboxImg" class="lightbox-img" alt="Foto del residuo registrado">
+      <div class="lightbox-info" id="lightboxInfo"></div>
+      <div class="lightbox-acciones">
+        <button class="btn-eliminar" id="btnEliminarFoto">🗑️ Eliminar</button>
+        <button class="cerrar" id="btnCerrarLightbox">Cerrar</button>
+      </div>
     </div>
   </div>
 
@@ -433,7 +522,8 @@ const estado = {
   ultimaFoto:null,
   tipoSeleccionado:null,
   porTipo:{ vidrio:0, plastico:0, papel:0, no_reciclable:0 },
-  canjes:[],   // {comercio, descuento, codigo, costo, hora}
+  canjes:[],       // {comercio, descuento, codigo, costo, hora}
+  fotosGaleria:[], // {id, dataUrl, tipo, puntos, hora} — respaldo temporal para verificación manual
 };
 
 /* ====== Utilidades ====== */
@@ -451,6 +541,37 @@ function pintarPuntos(){
   $("#hdrPuntos").textContent = estado.ecoPuntos;
   $("#contFotos").textContent = estado.fotos;
   pintarDesglose();
+  actualizarProgreso();
+}
+
+/* Barra de progreso "humo que se disipa": el tramo entre el umbral ya
+   superado y el próximo premio se pinta de verde; el humo gris ocupa
+   lo que falta y se va achicando (disipando) a medida que sumás puntos. */
+function actualizarProgreso(){
+  const umbrales = [...new Set(COMERCIOS.map(c=>c.costo))].sort((a,b)=>a-b);
+  const max = umbrales[umbrales.length-1];
+  let prev = 0, next = max;
+  for (const u of umbrales){
+    if (u <= estado.ecoPuntos) prev = u;
+    else { next = u; break; }
+  }
+  const wrap = $("#progresoWrap");
+  let pct, meta;
+  if (estado.ecoPuntos >= max){
+    pct = 100;
+    meta = "¡Aire limpio! Ya podés canjear cualquier premio 🌿";
+  } else {
+    pct = Math.round(((estado.ecoPuntos - prev) / (next - prev)) * 100);
+    const proximo = COMERCIOS.find(c=>c.costo===next);
+    meta = estado.fotos===0
+      ? "Sacá tu primera foto para empezar"
+      : `Te faltan ${next - estado.ecoPuntos} pts para ${proximo.nombre}`;
+  }
+  $("#progresoFill").style.width = pct + "%";
+  $("#progresoHumo").style.width = (100 - pct) + "%";
+  $("#progresoPct").textContent = pct + "%";
+  $("#progresoMeta").textContent = meta;
+  wrap.classList.toggle("limpio", pct >= 100);
 }
 function pintarDesglose(){
   const cont = $("#desglose");
@@ -551,12 +672,17 @@ function flashYsumar(dataUrl, tipo){
   estado.porTipo[tipo] = (estado.porTipo[tipo] || 0) + 1;
   estado.ecoPuntos += info.puntos;
   estado.ultimaFoto = dataUrl;
+  estado.fotosGaleria.push({
+    id: (crypto.randomUUID ? crypto.randomUUID() : "f"+Date.now()+Math.random()),
+    dataUrl, tipo, puntos: info.puntos, hora: horaCorta()
+  });
   $("#thumbVacia").style.display = "none";
   const t = $("#thumbUlt");
   t.src = dataUrl; t.style.display = "block";
   pintarPuntos();
   if (info.puntos > 0) animarSuma(info.puntos);
   pintarPremios(); // refresca botones de canje habilitados
+  pintarGaleria();
 
   // Pide elegir el tipo de nuevo para el próximo residuo
   estado.tipoSeleccionado = null;
@@ -628,6 +754,75 @@ function pintarCanjes(){
   badge.textContent = estado.canjes.length;
 }
 
+/* ====== Galería de verificación (respaldo temporal, sin backend) ====== */
+function pintarGaleria(){
+  const cont = $("#galeriaGrid");
+  const badge = $("#badgeGaleria");
+  if (estado.fotosGaleria.length === 0){
+    cont.innerHTML = `<div class="vacio" style="grid-column:1/-1">
+      <span class="em">📷</span><b>Todavía no sacaste fotos</b>
+      <p>Andá a la pestaña Cámara y registrá tu primer residuo.</p></div>`;
+    badge.style.display = "none";
+    return;
+  }
+  // últimas fotos primero, para revisar rápido lo recién registrado
+  cont.innerHTML = [...estado.fotosGaleria].reverse().map(f=>{
+    const info = TIPOS_RESIDUO[f.tipo] || TIPOS_RESIDUO.no_reciclable;
+    return `<button type="button" class="galeria-item ${f.tipo==='no_reciclable'?'no-reciclable':''}" data-id="${f.id}">
+      <img src="${f.dataUrl}" alt="${info.nombre}">
+      <span class="tag"><span>${info.em}</span><span>+${f.puntos}</span></span>
+    </button>`;
+  }).join("");
+  cont.querySelectorAll(".galeria-item").forEach(b=>{
+    b.addEventListener("click", ()=> abrirLightbox(b.dataset.id));
+  });
+  badge.style.display = "grid";
+  badge.textContent = estado.fotosGaleria.length;
+}
+
+function abrirLightbox(id){
+  const f = estado.fotosGaleria.find(x=>x.id===id);
+  if (!f) return;
+  const info = TIPOS_RESIDUO[f.tipo] || TIPOS_RESIDUO.no_reciclable;
+  $("#lightboxImg").src = f.dataUrl;
+  $("#lightboxInfo").innerHTML = `${info.em} <b>${info.nombre}</b> · +${f.puntos} pts · ${f.hora}`;
+  $("#overlayLightbox").dataset.id = id;
+  $("#overlayLightbox").classList.add("abierto");
+}
+function cerrarLightbox(){ $("#overlayLightbox").classList.remove("abierto"); }
+
+// Elimina una foto mal tomada (repetida, borrosa, tipo incorrecto) y
+// descuenta lo que había sumado, ya que no hay IA que valide el contenido.
+function eliminarFoto(id){
+  const idx = estado.fotosGaleria.findIndex(x=>x.id===id);
+  if (idx === -1) return;
+  const f = estado.fotosGaleria[idx];
+  estado.fotosGaleria.splice(idx,1);
+  estado.fotos = Math.max(0, estado.fotos - 1);
+  estado.porTipo[f.tipo] = Math.max(0, (estado.porTipo[f.tipo]||0) - 1);
+  estado.ecoPuntos = Math.max(0, estado.ecoPuntos - f.puntos);
+
+  const ultima = estado.fotosGaleria[estado.fotosGaleria.length-1];
+  if (ultima){
+    estado.ultimaFoto = ultima.dataUrl;
+    $("#thumbUlt").src = ultima.dataUrl;
+  } else {
+    estado.ultimaFoto = null;
+    $("#thumbUlt").style.display = "none";
+    $("#thumbVacia").style.display = "grid";
+  }
+  pintarPuntos();
+  pintarPremios();
+  pintarGaleria();
+}
+$("#btnCerrarLightbox").addEventListener("click", cerrarLightbox);
+$("#btnEliminarFoto").addEventListener("click", ()=>{
+  const id = $("#overlayLightbox").dataset.id;
+  cerrarLightbox();
+  eliminarFoto(id);
+});
+$("#overlayLightbox").addEventListener("click", (e)=>{ if (e.target.id==="overlayLightbox") cerrarLightbox(); });
+
 /* ====== Modal nuevo cupón ====== */
 function mostrarModalCupon(canje){
   $("#cuponModal").innerHTML = plantillaCupon(canje);
@@ -680,6 +875,7 @@ btnEmpezar.addEventListener("click", ()=>{
   pintarPuntos();
   pintarPremios();
   pintarCanjes();
+  pintarGaleria();
   iniciarCamara(); // la cámara arranca al entrar (gesto del usuario => permiso)
   setTimeout(()=> $("#inicio").remove(), 500);
 });
